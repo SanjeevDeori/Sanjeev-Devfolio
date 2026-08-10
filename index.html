@@ -198,6 +198,11 @@ section{padding:5rem 2.5rem;position:relative}
 .quote-nav{display:flex;gap:.7rem;margin-top:.5rem}
 .qnav-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:.3rem .85rem;font-family:'DM Mono',monospace;font-size:.64rem;border-radius:2px;cursor:pointer;transition:all .2s;letter-spacing:.08em}
 .qnav-btn:hover{border-color:var(--accent);color:var(--accent)}
+.qlike-btn{transition:all .2s}
+.qlike-btn.liked{border-color:var(--accent3);color:var(--accent3);background:rgba(255,126,179,.08)}
+.qlike-btn.liked:hover{border-color:var(--accent3);color:var(--accent3)}
+.qlike-btn.pop{animation:likePop .35s ease}
+@keyframes likePop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
 
 /* JOURNEY */
 #journey{background:var(--bg)}
@@ -739,6 +744,8 @@ footer{border-top:1px solid var(--border);padding:1.8rem 2.5rem;display:flex;jus
     <div class="quote-dots" id="quoteDots"></div>
     <div class="quote-nav">
       <button class="qnav-btn" onclick="prevQ()">← Prev</button>
+      <button class="qnav-btn qlike-btn" id="qLikeBtn" onclick="toggleLikeQ()" title="Favorite this quote">♡ <span id="qLikeCount">0</span></button>
+      <button class="qnav-btn" onclick="copyQuote()">⧉ Copy</button>
       <button class="qnav-btn" onclick="nextQ()">Next →</button>
     </div>
   </div>
@@ -928,6 +935,7 @@ document.getElementById('tickerInner').innerHTML=doubled.map(t=>`<span class="ti
 
 /* QUOTES */
 const quotes=[
+  {text:"As long as I'm alive, there are infinite chances!",author:"Monkey D. Luffy",from:"One Piece",emoji:"🏴‍☠️",series:"One Piece"},
   {text:"I will become King of the Pirates — no matter what!",author:"Monkey D. Luffy",from:"One Piece",emoji:"🏴‍☠️",series:"One Piece"},
   {text:"I don't want to conquer anything. I just think the guy with the most freedom in this whole ocean is the Pirate King!",author:"Monkey D. Luffy",from:"One Piece",emoji:"🏴‍☠️",series:"One Piece"},
   {text:"If I die trying, at least I died trying with everything I had. That's enough for me!",author:"Monkey D. Luffy",from:"One Piece",emoji:"🏴‍☠️",series:"One Piece"},
@@ -962,6 +970,7 @@ function renderQ(idx){
     document.getElementById('qFrom').textContent=q.emoji+' '+q.from;
     document.getElementById('qAvatar').textContent=q.emoji;
     txt.style.opacity=1;txt.style.transform='none';
+    syncLikeBtn(q);
   },210);
   const dots=document.getElementById('quoteDots');
   dots.innerHTML=list.map((_,i)=>`<div class="qdot${i===qi?' active':''}" onclick="renderQ(${i});resetQT()"></div>`).join('');
@@ -976,6 +985,32 @@ series.forEach(s=>{
   qf.appendChild(b);
 });
 renderQ(0);resetQT();
+
+/* QUOTE LIKES — persisted per quote in localStorage */
+const LIKE_KEY='sd_liked_quotes';
+function getLiked(){try{return JSON.parse(localStorage.getItem(LIKE_KEY)||'{}')}catch(e){return{}}}
+function syncLikeBtn(q){
+  const liked=getLiked();
+  const btn=document.getElementById('qLikeBtn');
+  const isLiked=!!liked[q.text];
+  btn.classList.toggle('liked',isLiked);
+  btn.querySelector('span').textContent=(liked[q.text]&&liked[q.text].count)||0;
+  btn.firstChild.textContent=isLiked?'♥ ':'♡ ';
+}
+function toggleLikeQ(){
+  const list=filtQ();const q=list[qi];if(!q)return;
+  const liked=getLiked();
+  if(liked[q.text]){delete liked[q.text]}
+  else{liked[q.text]={author:q.author,count:1}}
+  localStorage.setItem(LIKE_KEY,JSON.stringify(liked));
+  syncLikeBtn(q);
+  const btn=document.getElementById('qLikeBtn');
+  btn.classList.remove('pop');void btn.offsetWidth;btn.classList.add('pop');
+}
+function copyQuote(){
+  const list=filtQ();const q=list[qi];if(!q)return;
+  navigator.clipboard.writeText(`"${q.text}" — ${q.author}, ${q.from}`).then(()=>showToast('✓ Quote copied!'));
+}
 
 /* DRAGGABLE JOURNEY */
 document.querySelectorAll('.jcard').forEach(card=>{
@@ -1016,10 +1051,11 @@ function closeModal(){document.getElementById('reposModal').classList.remove('op
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 
 /* COPY EMAIL */
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);
+}
 function copyEmail(){
-  navigator.clipboard.writeText('sanjeevdeori743.jams@gmail.com').then(()=>{
-    const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);
-  });
+  navigator.clipboard.writeText('sanjeevdeori743.jams@gmail.com').then(()=>showToast('✓ Email copied!'));
 }
 
 /* ===== SURPRISE: SAILING SHIP ===== */
